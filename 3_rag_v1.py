@@ -9,8 +9,12 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
-load_dotenv()  # expects OPENAI_API_KEY in .env
+load_dotenv() 
+api_key = os.getenv("GEMINI_API_KEY") 
+os.environ["LANGCHAIN_PROJECT"] = "RAG Chatbot"
 
 PDF_PATH = "islr.pdf"  # <-- change to your PDF filename
 
@@ -23,7 +27,7 @@ splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
 splits = splitter.split_documents(docs)
 
 # 3) Embed + index
-emb = OpenAIEmbeddings(model="text-embedding-3-small")
+emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vs = FAISS.from_documents(splits, emb)
 retriever = vs.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
@@ -34,7 +38,7 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 # 5) Chain
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", api_key=api_key, temperature=0)
 def format_docs(docs): return "\n\n".join(d.page_content for d in docs)
 
 parallel = RunnableParallel({

@@ -6,6 +6,8 @@ import hashlib
 from pathlib import Path
 from dotenv import load_dotenv
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_huggingface import HuggingFaceEmbeddings
 from langsmith import traceable
 
 from langchain_community.document_loaders import PyPDFLoader
@@ -17,6 +19,8 @@ from langchain_core.runnables import RunnableParallel, RunnablePassthrough, Runn
 from langchain_core.output_parsers import StrOutputParser
 
 load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY") 
+os.environ["LANGCHAIN_PROJECT"] = "RAG Chatbot"
 
 PDF_PATH = "islr.pdf"  # change to your file
 INDEX_ROOT = Path(".indices")
@@ -36,7 +40,7 @@ def split_documents(docs, chunk_size=1000, chunk_overlap=150):
 
 @traceable(name="build_vectorstore")
 def build_vectorstore(splits, embed_model_name: str):
-    emb = OpenAIEmbeddings(model=embed_model_name)
+    emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.from_documents(splits, emb)
 
 # ----------------- cache key / fingerprint -----------------
@@ -61,7 +65,7 @@ def _index_key(pdf_path: str, chunk_size: int, chunk_overlap: int, embed_model_n
 # ----------------- explicitly traced load/build runs -----------------
 @traceable(name="load_index", tags=["index"])
 def load_index_run(index_dir: Path, embed_model_name: str):
-    emb = OpenAIEmbeddings(model=embed_model_name)
+    emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.load_local(
         str(index_dir),
         emb,
@@ -100,7 +104,7 @@ def load_or_build_index(
         return build_index_run(pdf_path, index_dir, chunk_size, chunk_overlap, embed_model_name)
 
 # ----------------- model, prompt, and pipeline -----------------
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", api_key=api_key, temperature=0)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Answer ONLY from the provided context. If not found, say you don't know."),
@@ -111,7 +115,7 @@ def format_docs(docs):
     return "\n\n".join(d.page_content for d in docs)
 
 @traceable(name="setup_pipeline", tags=["setup"])
-def setup_pipeline(pdf_path: str, chunk_size=1000, chunk_overlap=150, embed_model_name="text-embedding-3-small", force_rebuild=False):
+def setup_pipeline(pdf_path: str, chunk_size=1000, chunk_overlap=150, embed_model_name="all-MiniLM-L6-v2", force_rebuild=False):
     return load_or_build_index(
         pdf_path=pdf_path,
         chunk_size=chunk_size,
@@ -126,7 +130,7 @@ def setup_pipeline_and_query(
     question: str,
     chunk_size: int = 1000,
     chunk_overlap: int = 150,
-    embed_model_name: str = "text-embedding-3-small",
+    embed_model_name: str = "all-MiniLM-L6-v2",
     force_rebuild: bool = False,
 ):
     vectorstore = setup_pipeline(pdf_path, chunk_size, chunk_overlap, embed_model_name, force_rebuild)

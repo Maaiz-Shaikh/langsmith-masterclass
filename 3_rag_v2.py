@@ -12,6 +12,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # --- LangSmith env (make sure these are set) ---
 # LANGCHAIN_TRACING_V2=true
@@ -19,6 +21,8 @@ from langchain_core.output_parsers import StrOutputParser
 # LANGCHAIN_PROJECT=pdf_rag_demo
 
 load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY") 
+os.environ["LANGCHAIN_PROJECT"] = "RAG Chatbot"
 
 PDF_PATH = "islr.pdf"  # change to your file
 
@@ -37,7 +41,7 @@ def split_documents(docs, chunk_size=1000, chunk_overlap=150):
 
 @traceable(name="build_vectorstore")
 def build_vectorstore(splits):
-    emb = OpenAIEmbeddings(model="text-embedding-3-small")
+    emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     # FAISS.from_documents internally calls the embedding model:
     vs = FAISS.from_documents(splits, emb)
     return vs
@@ -51,8 +55,7 @@ def setup_pipeline(pdf_path: str):
     return vs
 
 # ---------- pipeline ----------
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", api_key=api_key, temperature=0)
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Answer ONLY from the provided context. If not found, say you don't know."),
     ("human", "Question: {question}\n\nContext:\n{context}")
