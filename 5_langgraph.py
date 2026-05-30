@@ -1,9 +1,10 @@
 # pip install -U langgraph langchain-openai pydantic python-dotenv langsmith
-
+import os
 import operator
 from typing import TypedDict, Annotated, List
 
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
 from langsmith import traceable
@@ -12,7 +13,9 @@ from langgraph.graph import StateGraph, START, END
 
 # ---------- Setup ----------
 load_dotenv()
-model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+api_key = os.getenv("GEMINI_API_KEY")
+os.environ["LANGCHAIN_PROJECT"] = "LangGraph Essay Evaluation"
+model = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", api_key=api_key, temperature=0)
 
 # ---------- Structured schema & model ----------
 class EvaluationSchema(BaseModel):

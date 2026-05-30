@@ -1,3 +1,4 @@
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 import requests
@@ -5,8 +6,11 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain.agents import create_react_agent, AgentExecutor
 from langchain import hub
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+os.environ["LANGCHAIN_PROJECT"] = "ReAct Agent"
 
 search_tool = DuckDuckGoSearchRun()
 
@@ -15,13 +19,14 @@ def get_weather_data(city: str) -> str:
   """
   This function fetches the current weather data for a given city
   """
-  url = f'https://api.weatherstack.com/current?access_key=f07d9636974c4120025fadf60678771b&query={city}'
+  weather_api_key = os.getenv("WEATHER_API_KEY")
+  url = f'https://api.weatherstack.com/current?access_key={weather_api_key}&query={city}'
 
   response = requests.get(url)
 
   return response.json()
 
-llm = ChatOpenAI()
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", api_key=api_key)
 
 # Step 2: Pull the ReAct prompt from LangChain Hub
 prompt = hub.pull("hwchase17/react")  # pulls the standard ReAct agent prompt
@@ -46,7 +51,7 @@ agent_executor = AgentExecutor(
 # Identify the birthplace city of Kalpana Chawla (search) and give its current temperature.
 
 # Step 5: Invoke
-response = agent_executor.invoke({"input": "What is the current temp of gurgaon"})
+response = agent_executor.invoke({"input": "Identify the birthplace city of Kalpana Chawla (search) and give its current temperature."})
 print(response)
 
 print(response['output'])
